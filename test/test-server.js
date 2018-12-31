@@ -13,6 +13,90 @@ const expect = chai.expect;
 // see: https://github.com/chaijs/chai-http
 chai.use(chaiHttp);
 
+describe("Recipes", function() {
+  
+  before(function() {
+    return runServer();
+  });
+
+  after(function() {
+    return closeServer();
+  });
+
+  // Get test: make a get request to /recipes, make sure response has expected components
+  it("should list recipes on GET", function() {
+    return chai
+      .request(app)
+      .get("/recipes")
+      .then(function(res) {
+
+        expect(res).to.have.status(200);
+        expect(res).to.be.json;
+        expect(res.body).to.be.a("array");
+        expect(res.body.length).to.be.at.least(1);
+
+        const expectedKeys = ["name", "id", "ingredients"];
+        res.body.forEach(function(recipe) {
+          expect(recipe).to.be.a("object");
+          expect(recipe).to.include.keys(expectedKeys);
+        });
+
+      });
+  });
+
+  // Post test: make a post request and confirm response has correct status and id
+  it("should add a recipe on POST", function() {
+    const newRecipe = {name: "bread", ingredients: ["flour", "water", "yeast", "salt", "oil"]};
+    return chai
+      .request(app)
+      .post("/recipes")
+      .send(newRecipe)
+      .then(function(res) {
+        expect(res).to.have.status(201);
+        expect(res).to.be.json;
+        expect(res.body).to.be.a('object');
+        expect(res.body).to.include.keys("name", "id", "ingredients");
+        expect(res.body.id).to.not.equal(null);
+        expect(res.body).to.deep.equal(Object.assign(newRecipe, {id: res.body.id}));
+      });
+  });
+
+  // Put test: make a get request to retrieve id of an existing recipe, then make a 
+  // put request with updated data and the id and ensure that response has correct data.
+  it("should update recipes on PUT", function() {
+    const updatedRecipe = {name: "milkshake", ingredients: ["2 tbsp cocoa", "2 cups vanilla ice cream", "1 cup milk", "1 tbsp chocolate sauce"]};
+    return chai
+      .request(app)
+      .get("/recipes")
+      .then(function(res) {
+        updatedRecipe.id = res.body[0].id;
+        return chai
+          .request(app)
+          .put(`/recipes/${updatedRecipe.id}`)
+          .send(updatedRecipe);
+      })
+      .then(function(res) {
+        expect(res).to.have.status(204);
+      });
+  });
+
+  // Delete test: make a get request to retrieve id of recipe to be deleted, then
+  // delete recipe and make sure it returns the correct status.
+  it("should delete recipes on DELETE", function() {
+    return chai
+      .request(app)
+      .get("/recipes")
+      .then(function(res) {
+        return chai
+          .request(app)
+          .delete(`/recipes/${res.body[0].id}`);
+      })
+      .then(function(res) {
+        expect(res).to.have.status(204);
+      })
+  })
+});
+
 describe("Shopping List", function() {
   // Before our tests run, we activate the server. Our `runServer`
   // function returns a promise, and we return the that promise by
